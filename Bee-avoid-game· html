@@ -129,8 +129,9 @@ function spawnObstacle(){
 
 // Collision detection between bee circle and obstacle column (tiled blocks)
 function checkCollision(obs){
-  const left = obs.x - obs.tileSize*4; // tile grid width = 8 -> rendered width tileSize*8 but ring narrower; use 8*tileSize
-  const right = obs.x + obs.tileSize*4;
+  const totalWidth = 8*obs.tileSize;
+  const left = obs.x - totalWidth/2;
+  const right = obs.x + totalWidth/2;
   if(bee.x + bee.radius < left || bee.x - bee.radius > right) return false;
   if( (bee.y - bee.radius) < obs.gapY || (bee.y + bee.radius) > (obs.gapY + obs.gap) ){
     return true; // touches solid area
@@ -145,7 +146,6 @@ function drawPixelRingAt(x,y,tileSize){
     for(let c=0;c<cols;c++){
       if(pixelRing[r][c]){
         ctx.fillStyle = '#f7cfcf';
-        // draw with slight pixelated border effect
         ctx.fillRect(x + c*tileSize, y + r*tileSize, tileSize, tileSize);
       }
     }
