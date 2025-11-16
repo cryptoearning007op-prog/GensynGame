@@ -3,31 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Honeybee Avoid — 45s Game</title>
+  <title>Honeybee Pixel Avoid — 45s</title>
   <style>
     html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center}
     canvas{background:#000;display:block;border:6px solid #111}
-    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto}
     .ui{position:absolute;top:10px;left:10px;color:#fff;font-family:system-ui,Arial}
-    .modal{background:rgba(0,0,0,0.85);color:#fff;padding:18px;border-radius:10px;text-align:center;max-width:420px}
+    .modal{background:rgba(0,0,0,0.9);color:#fff;padding:18px;border-radius:10px;text-align:center;max-width:520px}
     .btn{display:inline-block;margin:8px;padding:8px 14px;border-radius:8px;background:#ffda6b;color:#000;font-weight:700;cursor:pointer;border:none}
     .level-btn{margin:6px;padding:8px 12px;border-radius:8px;background:#fff;color:#000;font-weight:700;cursor:pointer;border:none}
     .small{font-size:13px;color:#ddd}
   </style>
 </head>
 <body>
-  <canvas id="c" width="800" height="600"></canvas>
+  <canvas id="c" width="900" height="600"></canvas>
   <div class="overlay" id="overlay">
     <div class="modal" id="menu">
       <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:10px">
-        <img id="manImg" src="man.png" alt="man" style="width:110px;height:110px;object-fit:contain;border-radius:8px;background:#fff"/>
+        <!-- man portrait is drawn on canvas so no external image required -->
+        <canvas id="manCanvas" width="120" height="120" style="border-radius:8px;background:#fff"></canvas>
         <div style="text-align:left">
-          <h2 style="margin:0 0 6px 0">Hello!</h2>
-          <div class="small">I'm here to cheer you on. Choose a level and press Start.</div>
+          <h2 style="margin:0 0 6px 0">Hey — ready to help the bee?</h2>
+          <div class="small">Choose a difficulty, then Start. Tap/click/space to make the bee jump.</div>
         </div>
       </div>
       <div style="margin-top:6px">
-        <div style="margin-bottom:8px">Pick a level (this choice appears only once before starting):</div>
+        <div style="margin-bottom:8px">Pick a level (choose once before starting):</div>
         <div>
           <button class="level-btn" id="easyBtn">Easy</button>
           <button class="level-btn" id="hardBtn">Hard</button>
@@ -35,39 +36,48 @@
         <div style="margin-top:12px">
           <button id="startBtn" class="btn">Start Game</button>
         </div>
-        <div class="small" style="margin-top:8px">Goal: Survive 45 seconds without touching the pink logos. Tap/click to make the bee jump.</div>
+        <div class="small" style="margin-top:8px">Goal: Survive 45 seconds without touching the pink logos (pixel rings). Score increases when you pass an obstacle.</div>
       </div>
     </div>
   </div>
   <div class="ui" id="ui">
     <div id="time">Time: 45</div>
     <div id="level" style="margin-top:6px">Level: -</div>
+    <div id="score" style="margin-top:6px">Score: 0</div>
     <div id="status" style="margin-top:6px;color:#ffb6b6"></div>
   </div>
 
 <script>
-// -----------------------------------------
-// Configuration & assets
-// -----------------------------------------
-const CANVAS = document.getElementById('c');
-const ctx = CANVAS.getContext('2d');
-let W = CANVAS.width, H = CANVAS.height;
+// Single-file game: no external images required. Obstacles are drawn pixel-by-pixel to match your pink logo style.
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
 
-// Images: the game expects two files next to the HTML file:
-//  - logo.png (the pink pixel logo used as obstacle block)
-//  - man.png  (the "man" image shown before starting)
-// Please put your provided images in the same folder and name them as above.
+// Menu elements
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const easyBtn = document.getElementById('easyBtn');
+const hardBtn = document.getElementById('hardBtn');
+const levelText = document.getElementById('level');
+const timeText = document.getElementById('time');
+const scoreText = document.getElementById('score');
+const statusText = document.getElementById('status');
 
-const logoImg = new Image(); logoImg.src = 'logo.png';
-const manImg = document.getElementById('manImg'); // also loaded in the DOM
+// Draw a simple "man" portrait onto manCanvas (so there's no 404)
+(function drawMan(){
+  const mc = document.getElementById('manCanvas');
+  const mctx = mc.getContext('2d');
+  mctx.fillStyle='#ff2d2d'; mctx.fillRect(0,0,mc.width,mc.height);
+  mctx.fillStyle='#fff'; mctx.fillRect(8,8,104,104);
+  mctx.fillStyle='#f5d0c8'; mctx.fillRect(22,18,80,60);
+  mctx.fillStyle='#000'; mctx.fillRect(30,30,20,8); mctx.fillRect(70,30,20,8);
+  mctx.fillRect(44,56,32,6);
+})();
 
-// Bee appearance (we draw it with canvas), but you can replace with a sprite if you like.
-
-// Game state
-let level = null; // 'easy' | 'hard'
+// Game params
+let level = null; // 'easy'|'hard'
 let started = false;
-let paused = false;
-let timeLeft = 45; // seconds
+let timeLeft = 45;
 let lastTime = null;
 let obstacles = [];
 let spawnTimer = 0;
@@ -75,186 +85,151 @@ let score = 0;
 let gameOver = false;
 let win = false;
 
-// Bee physics
-const bee = { x:120, y:H/2, vy:0, radius:18, gravity:0.9, jump:-14 };
-
-// Level params (will be set when player picks easy/hard)
 const params = {
-  easy: { gap: 180, speed: 160, spawnInterval: 1400 },
-  hard: { gap: 120, speed: 220, spawnInterval: 950 }
+  easy: { gap: 200, speed: 140, spawnInterval: 1600 },
+  hard: { gap: 120, speed: 260, spawnInterval: 1000 }
 };
 let curParams = params.easy;
 
-// Touch / click control
-function jump(){
-  if(!started) return;
-  if(gameOver) return;
-  bee.vy = curParams ? bee.jump : -12;
-}
+// Bee sprite frames (simple procedural wings)
+const bee = { x:140, y:H/2, vy:0, radius:20, gravity:0.9, jump:-15, wingPhase:0 };
 
-CANVAS.addEventListener('mousedown', jump);
-CANVAS.addEventListener('touchstart', (e)=>{ e.preventDefault(); jump(); }, {passive:false});
+// Pixel-style ring pattern (8x8 block ring) - we'll draw it tiled vertically for column obstacles
+const pixelRing = [
+  [0,1,1,1,1,1,1,0],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,1],
+  [0,1,1,1,1,1,1,0]
+];
+
+// Controls
+function jump(){ if(!started) return; if(gameOver) return; bee.vy = bee.jump; audioJump(); }
+canvas.addEventListener('mousedown', jump);
+canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); jump(); }, {passive:false});
 window.addEventListener('keydown', (e)=>{ if(e.code==='Space') jump(); });
 
-// Menu buttons
-const overlay = document.getElementById('overlay');
-const menu = document.getElementById('menu');
-const startBtn = document.getElementById('startBtn');
-const easyBtn = document.getElementById('easyBtn');
-const hardBtn = document.getElementById('hardBtn');
-const levelText = document.getElementById('level');
-const timeText = document.getElementById('time');
-const statusText = document.getElementById('status');
-
+// Menu actions
 easyBtn.onclick = ()=>{ level='easy'; curParams = params.easy; easyBtn.style.background='#ffeaa7'; hardBtn.style.background='#fff'; levelText.textContent='Level: Easy'; };
 hardBtn.onclick = ()=>{ level='hard'; curParams = params.hard; hardBtn.style.background='#ffeaa7'; easyBtn.style.background='#fff'; levelText.textContent='Level: Hard'; };
+startBtn.onclick = ()=>{ if(!level){ alert('Please choose Easy or Hard first.'); return; } startGame(); };
 
-startBtn.onclick = ()=>{
-  if(!level) { alert('Please choose Easy or Hard first.'); return; }
-  startGame();
-};
+function startGame(){ started=true; overlay.style.display='none'; timeLeft=45; lastTime=performance.now(); obstacles=[]; spawnTimer=0; score=0; gameOver=false; win=false; bee.y=H/2; bee.vy=0; requestAnimationFrame(loop); }
 
-function startGame(){
-  started = true; overlay.style.display='none';
-  timeLeft = 45; lastTime = performance.now(); obstacles=[]; spawnTimer=0; gameOver=false; win=false; bee.y = H/2; bee.vy=0; score=0;
-  requestAnimationFrame(loop);
-}
-
-// Obstacle generator: creates a vertical column of 'logo' blocks with a gap at random vertical position
+// Create obstacle: vertical column made from tiled pixel rings, with a vertical gap
 function spawnObstacle(){
   const gap = curParams.gap;
   const minY = 60; const maxY = H - 60 - gap;
   const gapY = Math.floor(Math.random()*(maxY-minY+1))+minY;
-  obstacles.push({ x: W + 40, gapY, gap, width: 60 });
+  obstacles.push({ x: W + 80, gapY, gap, tileSize: 28, passed:false });
 }
 
-// Collision check: check bee circle against tiled logo rectangles forming columns
+// Collision detection between bee circle and obstacle column (tiled blocks)
 function checkCollision(obs){
-  // We'll split the column into rectangular blocks (logo image height ~48). But to simplify: the column is solid except for the gap.
-  const left = obs.x - obs.width/2;
-  const right = obs.x + obs.width/2;
+  const left = obs.x - obs.tileSize*4; // tile grid width = 8 -> rendered width tileSize*8 but ring narrower; use 8*tileSize
+  const right = obs.x + obs.tileSize*4;
   if(bee.x + bee.radius < left || bee.x - bee.radius > right) return false;
-  // vertically, collision if bee intersects top part or bottom part
-  const topBottom = (bee.y - bee.radius) < obs.gapY || (bee.y + bee.radius) > (obs.gapY + obs.gap);
-  return topBottom;
+  if( (bee.y - bee.radius) < obs.gapY || (bee.y + bee.radius) > (obs.gapY + obs.gap) ){
+    return true; // touches solid area
+  }
+  return false;
 }
 
-// Draw helper: draw obstacle column using logo tiles
-function drawObstacle(obs){
-  const tileW = 40; const tileH = 40;
-  const colX = obs.x - obs.width/2;
-  // top column from y=0 to obs.gapY
-  for(let y=0;y<obs.gapY;y+=tileH){
-    ctx.drawImage(logoImg, colX, y, obs.width, tileH);
-  }
-  // bottom column from gapY+gap to H
-  for(let y=obs.gapY+obs.gap;y<H;y+=tileH){
-    ctx.drawImage(logoImg, colX, y, obs.width, tileH);
+// Draw pixel ring at x,y with tileSize scaling
+function drawPixelRingAt(x,y,tileSize){
+  const rows = pixelRing.length, cols = pixelRing[0].length;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      if(pixelRing[r][c]){
+        ctx.fillStyle = '#f7cfcf';
+        // draw with slight pixelated border effect
+        ctx.fillRect(x + c*tileSize, y + r*tileSize, tileSize, tileSize);
+      }
+    }
   }
 }
+
+// Draw obstacle by tiling pixel rings vertically above and below gap
+function drawObstacle(obs){
+  const tile = obs.tileSize;
+  const totalWidth = 8*tile;
+  const left = obs.x - totalWidth/2;
+  // top
+  for(let y= - (8*tile); y < obs.gapY; y += 8*tile){
+    drawPixelRingAt(left, y, tile);
+  }
+  // bottom
+  for(let y=obs.gapY + obs.gap; y < H + 8*tile; y += 8*tile){
+    drawPixelRingAt(left, y, tile);
+  }
+}
+
+// Audio (WebAudio simple effects)
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = AudioCtx ? new AudioCtx() : null;
+function playBeep(freq, time, type='sine', gain=0.12){ if(!audioCtx) return; const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type=type; o.frequency.value = freq; g.gain.value = gain; o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + time); }
+function audioJump(){ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); playBeep(800,0.08,'sine',0.06); }
+function audioHit(){ playBeep(160,0.18,'sawtooth',0.15); }
+function audioWin(){ playBeep(1200,0.08,'sine',0.08); setTimeout(()=>playBeep(900,0.08,'sine',0.06),90); }
 
 // Main loop
-function loop(ts){
-  if(!lastTime) lastTime = ts;
-  const dt = Math.min(40, ts - lastTime); // ms
-  lastTime = ts;
-  if(!started) return;
-  if(gameOver) { draw(); displayEnd(); return; }
-
+function loop(ts){ if(!lastTime) lastTime = ts; const dt = Math.min(40, ts - lastTime); lastTime = ts; if(!started) return; if(gameOver){ draw(); displayEnd(); return; }
   // update time
-  timeLeft -= dt/1000;
-  if(timeLeft <= 0){ timeLeft = 0; win = true; gameOver = true; }
-
-  // spawn obstacles
-  spawnTimer += dt;
-  if(spawnTimer > curParams.spawnInterval){ spawnTimer = 0; spawnObstacle(); }
-
+  timeLeft -= dt/1000; if(timeLeft <= 0){ timeLeft = 0; win=true; gameOver=true; audioWin(); }
+  // spawn
+  spawnTimer += dt; if(spawnTimer > curParams.spawnInterval){ spawnTimer = 0; spawnObstacle(); }
   // move obstacles
-  for(let i=obstacles.length-1;i>=0;i--){
-    obstacles[i].x -= curParams.speed * (dt/1000);
-    if(obstacles[i].x < -100) obstacles.splice(i,1);
-  }
-
+  for(let i=obstacles.length-1;i>=0;i--){ const ob = obstacles[i]; ob.x -= curParams.speed * (dt/1000); if(!ob.passed && ob.x + 8*ob.tileSize/2 < bee.x){ ob.passed = true; score++; scoreText.textContent='Score: '+score; playBeep(600,0.06,'square',0.06); }
+    if(ob.x < -200) obstacles.splice(i,1); }
   // physics
-  bee.vy += bee.gravity;
-  bee.y += bee.vy;
-  // ground/ceiling
-  if(bee.y + bee.radius > H){ bee.y = H - bee.radius; bee.vy = 0; gameOver=true; }
+  bee.vy += bee.gravity; bee.y += bee.vy; bee.wingPhase += dt*0.02;
+  if(bee.y + bee.radius > H){ bee.y = H - bee.radius; bee.vy = 0; gameOver=true; audioHit(); }
   if(bee.y - bee.radius < 0){ bee.y = bee.radius; bee.vy = 0; }
-
-  // collision check
-  for(const ob of obstacles){ if(checkCollision(ob)){ gameOver=true; break; } }
-
-  draw();
-  if(!gameOver) requestAnimationFrame(loop);
+  // collisions
+  for(const ob of obstacles){ if(checkCollision(ob)){ gameOver=true; audioHit(); break; } }
+  draw(); if(!gameOver) requestAnimationFrame(loop);
 }
 
-// Draw everything
-function draw(){
-  ctx.clearRect(0,0,W,H);
-  // background
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
-
-  // finish line indicator at far right (just visual; win is based on timer)
-  ctx.fillStyle = '#0f0'; ctx.fillRect(W-10,0,6,H);
-
+function draw(){ ctx.clearRect(0,0,W,H); // bg
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+  // finish line visual
+  ctx.fillStyle='#0f0'; ctx.fillRect(W-12,0,6,H);
   // obstacles
-  for(const ob of obstacles){ drawObstacle(ob); }
+  for(const ob of obstacles) drawObstacle(ob);
+  // bee (sprite)
+  drawBee();
+  // UI
+  timeText.textContent = 'Time: '+Math.ceil(timeLeft);
+}
 
-  // draw bee
+function drawBee(){ ctx.save(); ctx.translate(bee.x, bee.y);
   // body
-  ctx.save();
-  ctx.translate(bee.x, bee.y);
-  ctx.beginPath(); ctx.ellipse(0,0,bee.radius,bee.radius*0.8,0,0,Math.PI*2);
-  ctx.fillStyle = '#ffd24d'; ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0,0,bee.radius,bee.radius*0.8,0,0,Math.PI*2); ctx.fillStyle='#ffd24d'; ctx.fill();
   // stripes
-  ctx.fillStyle = '#222'; ctx.fillRect(-10,-8,20,6);
-  // wing
-  ctx.beginPath(); ctx.ellipse(6,-18,10,6,0,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
-  ctx.restore();
+  ctx.fillStyle='#222'; ctx.fillRect(-10,-8,20,6);
+  // eye
+  ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(6,-2,3,0,Math.PI*2); ctx.fill();
+  // wings flap (two frames using wingPhase)
+  const phase = Math.sin(bee.wingPhase);
+  ctx.save(); ctx.rotate(-0.2+0.1*phase); ctx.beginPath(); ctx.ellipse(6,-18,12,8,0,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill(); ctx.restore();
+  ctx.restore(); }
 
-  // UI text
-  timeText.textContent = 'Time: ' + Math.ceil(timeLeft);
-  statusText.textContent = '';
-}
+function displayEnd(){ ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.font='28px system-ui'; if(win){ ctx.fillText('You survived 45s — You win! 🎉', W/2, H/2 - 6); } else { ctx.fillText('Game Over — You hit a logo', W/2, H/2 - 6); }
+  ctx.font='16px system-ui'; ctx.fillText('Tap to return to menu', W/2, H/2 + 30); }
 
-function displayEnd(){
-  // dark overlay and message
-  ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle = '#fff'; ctx.textAlign='center'; ctx.font='28px system-ui';
-  if(win){ ctx.fillText('You survived 45s — You win! 🎉', W/2, H/2 - 6); }
-  else{ ctx.fillText('Game Over — You hit a logo', W/2, H/2 - 6); }
-  ctx.font='16px system-ui'; ctx.fillText('Tap to play again', W/2, H/2 + 30);
-}
+// restart: tap after game over to go back to menu
+canvas.addEventListener('mousedown', (e)=>{ if(gameOver){ overlay.style.display='flex'; started=false; } });
+canvas.addEventListener('touchstart', (e)=>{ if(gameOver){ overlay.style.display='flex'; started=false; } }, {passive:false});
 
-// restart on tap after game over
-CANVAS.addEventListener('mousedown', (e)=>{ if(gameOver){ overlay.style.display='flex'; menu.style.display='block'; started=false; } });
-CANVAS.addEventListener('touchstart', (e)=>{ if(gameOver){ overlay.style.display='flex'; menu.style.display='block'; started=false; } }, {passive:false});
-
-// make canvas responsive
-function resize(){
-  // keep fixed internal resolution but scale CSS
-  const maxW = Math.min(window.innerWidth - 20, 900);
-  const scale = Math.min(maxW / 800, (window.innerHeight - 60) / 600);
-  CANVAS.style.width = Math.round(800*scale)+'px';
-  CANVAS.style.height = Math.round(600*scale)+'px';
-}
+// responsive scaling
+function resize(){ const maxW = Math.min(window.innerWidth - 20, 1100); const scale = Math.min(maxW / W, (window.innerHeight - 60) / H); canvas.style.width = Math.round(W*scale)+'px'; canvas.style.height = Math.round(H*scale)+'px'; }
 window.addEventListener('resize', resize); resize();
 
-// preload images and show menu once ready
-let assetsLoaded = 0;
-logoImg.onload = ()=>{ assetsLoaded++; };
-logoImg.onerror = ()=>{ /* still continue, will draw simple rects if not loaded */ };
-manImg.onload = ()=>{ assetsLoaded++; };
-manImg.onerror = ()=>{ /* ignore */ };
-
-// Draw an initial placeholder scene while waiting
-(function initialDraw(){
-  ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='#fff'; ctx.font='20px system-ui'; ctx.textAlign='center';
-  ctx.fillText('Honeybee Avoid — ready', W/2, H/2 - 10);
-  ctx.fillText('Place logo.png and man.png next to this file, choose level and Start', W/2, H/2 + 20);
-})();
+// initial placeholder draw
+(function initial(){ ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='22px system-ui'; ctx.textAlign='center'; ctx.fillText('Honeybee Pixel Avoid — Ready', W/2, H/2 - 6); ctx.font='14px system-ui'; ctx.fillText('Choose level and press Start. No external images required.', W/2, H/2 + 20); })();
 
 </script>
 </body>
