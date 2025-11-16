@@ -1,121 +1,206 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Honeybee Pixel Avoid — Updated</title>
-  <style>
-    html,body{height:100%;margin:0;background:#0b0b0b;display:flex;align-items:center;justify-content:center;font-family:system-ui,Arial}
-    #wrap{position:relative}
-    canvas{background:#071018;display:block;border:6px solid #111;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.6)}
-    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto}
-    .ui{position:absolute;top:10px;left:10px;color:#fff}
-    .modal{background:linear-gradient(180deg,rgba(0,0,0,0.92),rgba(10,10,10,0.92));color:#fff;padding:16px;border-radius:12px;text-align:center;max-width:540px}
-    .btn{display:inline-block;margin:8px;padding:8px 14px;border-radius:8px;background:#ffd86b;color:#000;font-weight:700;cursor:pointer;border:none}
-    .level-btn{margin:6px;padding:8px 12px;border-radius:8px;background:#fff;color:#000;font-weight:700;cursor:pointer;border:none}
-    .small{font-size:13px;color:#cfcfcf}
-    .row{display:flex;gap:8px;align-items:center;justify-content:center}
-    #logoInput{display:inline-block}
-    .label{font-size:13px;color:#ddd;margin-right:6px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Honeybee — Nature Avoid (45s)</title>
+<style>
+  :root{--ui:#fff;--accent:#ffd54a;--danger:#ff6b6b}
+  html,body{height:100%;margin:0;background:#07121a;font-family:system-ui,Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center}
+  #wrap{position:relative;width:100%;max-width:1100px;padding:18px;box-sizing:border-box}
+  canvas{display:block;width:100%;height:auto;border-radius:12px;box-shadow:0 18px 40px rgba(2,8,12,0.7);background:#07121a}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto}
+  .modal{background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(5,10,8,0.92)); color:var(--ui); padding:18px;border-radius:12px; max-width:720px; width:92%}
+  .row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .btn{background:var(--accent);border:none;padding:10px 14px;border-radius:8px;font-weight:700;cursor:pointer}
+  .muted{color:#cfcfcf;font-size:13px}
+  .small{font-size:13px;color:#cfcfcf}
+  .file{background:#fff;border-radius:8px;padding:6px 8px}
+  .ui{position:absolute;left:18px;top:18px;color:var(--ui)}
+  .ui div{margin-bottom:8px;font-weight:700}
+  #footerNote{position:absolute;right:18px;bottom:18px;color:#bfcfcf;font-size:12px}
+  .big{font-size:18px}
+  .green{color:#8ee29a}
+  button.level-selected{background:#fff}
+</style>
 </head>
 <body>
   <div id="wrap" aria-live="polite">
-    <canvas id="c" width="980" height="620" aria-label="Honeybee game"></canvas>
+    <canvas id="game" width="980" height="620" aria-label="Honeybee avoid game"></canvas>
 
-    <div class="overlay" id="overlay">
+    <div class="overlay" id="menuOverlay">
       <div class="modal" id="menu" role="dialog" aria-modal="true">
-        <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:12px">
-          <canvas id="manCanvas" width="110" height="110" style="border-radius:8px;background:#fff"></canvas>
-          <div style="text-align:left;max-width:330px">
-            <h2 style="margin:0 0 6px 0">Help the honeybee!</h2>
-            <div class="small">Choose difficulty, upload your exact logo if you want, then Start. Tap/click/Space to make the bee jump.</div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <canvas id="charCanvas" width="120" height="120" style="border-radius:8px;background:#fff"></canvas>
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <h2 style="margin:0">Hello — I'll cheer you on!</h2>
+                <div class="small">Choose difficulty, optionally upload your logo & character, then Start. Tap/click/Space to jump.</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style="margin-top:8px;display:flex;flex-direction:row;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap">
+        <div style="margin-top:12px" class="row">
           <div>
-            <div style="margin-bottom:6px">Pick a level (choose once before start):</div>
+            <div class="small" style="margin-bottom:6px">Pick a level:</div>
             <div class="row">
-              <button class="level-btn" id="easyBtn">Easy</button>
-              <button class="level-btn" id="hardBtn">Hard</button>
+              <button id="easyBtn" class="btn level-btn">Easy (Member)</button>
+              <button id="hardBtn" class="btn level-btn">Hard</button>
             </div>
+            <div class="small" style="margin-top:6px">Easy has larger gaps and slower obstacles so members have more room.</div>
           </div>
 
-          <div style="margin-left:6px">
-            <div style="margin-bottom:6px">Use your logo (optional):</div>
-            <div class="row">
-              <input id="logoInput" type="file" accept="image/*">
-              <button class="btn" id="clearLogo">Clear</button>
-            </div>
-            <div class="small" style="margin-top:6px">If you upload, obstacles will use your logo tiled to match the original look.</div>
+          <div>
+            <div class="small" style="margin-bottom:6px">Upload logo (optional)</div>
+            <input id="logoFile" class="file" type="file" accept="image/*">
+            <div class="small" style="margin-top:6px">Uploaded image will be tiled for obstacles.</div>
+          </div>
+
+          <div>
+            <div class="small" style="margin-bottom:6px">Upload start-character (optional)</div>
+            <input id="charFile" class="file" type="file" accept="image/*">
+            <div class="small" style="margin-top:6px">This image will appear on the start screen asking players to start.</div>
           </div>
         </div>
 
-        <div style="margin-top:12px">
-          <button id="startBtn" class="btn">Start Game</button>
+        <div style="margin-top:14px;display:flex;gap:12px;align-items:center;justify-content:center">
+          <button id="startBtn" class="btn big">Start Game</button>
+          <button id="clearUploads" class="btn" style="background:#fff;color:#000">Clear Uploads</button>
         </div>
 
-        <div class="small" style="margin-top:10px">Goal: Survive 45 seconds. Score increments per obstacle passed.</div>
+        <div style="margin-top:12px;text-align:center" class="muted">Goal: Survive <strong>45 seconds</strong>. Score increases when the bee passes obstacles. Good luck!</div>
       </div>
     </div>
 
-    <div class="ui" id="ui" aria-hidden="false">
-      <div id="time">Time: 45</div>
-      <div id="level" style="margin-top:6px">Level: -</div>
-      <div id="score" style="margin-top:6px">Score: 0</div>
-      <div id="status" style="margin-top:6px;color:#ffb6b6"></div>
+    <div class="ui" id="hud" aria-hidden="false">
+      <div id="timeText">Time: 45</div>
+      <div id="levelText" style="font-size:14px;margin-top:6px">Level: -</div>
+      <div id="scoreText" style="font-size:14px;margin-top:6px">Score: 0</div>
     </div>
+
+    <div id="footerNote">Tap/click/Space — jump</div>
   </div>
 
 <script>
-// --- Setup & DOM
-const canvas = document.getElementById('c');
+/* ---------------------------
+   Honeybee Nature Avoid
+   Single-file HTML game
+   --------------------------- */
+
+const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W = canvas.width, H = canvas.height;
 
-const overlay = document.getElementById('overlay');
+// HUD elements
+const menuOverlay = document.getElementById('menuOverlay');
 const startBtn = document.getElementById('startBtn');
 const easyBtn = document.getElementById('easyBtn');
 const hardBtn = document.getElementById('hardBtn');
-const levelText = document.getElementById('level');
-const timeText = document.getElementById('time');
-const scoreText = document.getElementById('score');
-const logoInput = document.getElementById('logoInput');
-const clearLogoBtn = document.getElementById('clearLogo');
+const logoFile = document.getElementById('logoFile');
+const charFile = document.getElementById('charFile');
+const clearUploads = document.getElementById('clearUploads');
+const timeText = document.getElementById('timeText');
+const levelText = document.getElementById('levelText');
+const scoreText = document.getElementById('scoreText');
+const charCanvas = document.getElementById('charCanvas');
+const charCtx = charCanvas.getContext('2d');
 
-(function drawMan(){
-  const mc = document.getElementById('manCanvas');
-  const mctx = mc.getContext('2d');
-  mctx.fillStyle='#2b7a78'; mctx.fillRect(0,0,mc.width,mc.height);
-  mctx.fillStyle='#fff'; mctx.fillRect(8,8,94,94);
-  mctx.fillStyle='#f1c27d'; mctx.fillRect(22,20,68,44);
-  mctx.fillStyle='#111'; mctx.fillRect(32,36,14,8); mctx.fillRect(64,36,14,8);
-  mctx.fillStyle='#ff6b6b'; mctx.fillRect(44,64,22,6);
+// Draw a friendly placeholder character in the mini canvas initially
+(function drawCharPlaceholder(){
+  const c = charCtx; c.clearRect(0,0,charCanvas.width,charCanvas.height);
+  c.fillStyle='#7ccf9b'; c.fillRect(0,0,charCanvas.width,charCanvas.height);
+  c.fillStyle='#fff'; c.fillRect(10,10,100,100);
+  c.fillStyle='#f4c9a6'; c.fillRect(24,22,72,48);
+  c.fillStyle='#222'; c.fillRect(36,36,10,6); c.fillRect(74,36,10,6);
+  c.fillStyle='#ff7b7b'; c.fillRect(52,66,16,6);
 })();
 
-// --- Game state
-let level = null;
-let started = false;
+// Game variables
+let started=false, gameOver=false, win=false;
+let level = null; // 'easy'|'hard'
 let timeLeft = 45;
 let lastTime = null;
-let obstacles = [];
-let spawnTimer = 0;
 let score = 0;
-let gameOver = false;
-let win = false;
+let obstacles = [];
+let spawnTimer=0;
 
+// Accept uploaded logo or character
+let logoImg = null, logoReady=false;
+let startCharImg = null, charReady=false;
+
+logoFile.addEventListener('change', (e)=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=> {
+    const img = new Image();
+    img.onload = ()=> { logoImg = img; logoReady=true; showStatus('Logo ready'); };
+    img.onerror = ()=> { logoImg=null; logoReady=false; showStatus('Logo failed'); };
+    img.src = r.result;
+  };
+  r.readAsDataURL(f);
+});
+
+charFile.addEventListener('change', (e)=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=> {
+    const img = new Image();
+    img.onload = ()=> {
+      startCharImg = img; charReady=true;
+      // draw into charCanvas nicely scaled
+      charCtx.clearRect(0,0,charCanvas.width,charCanvas.height);
+      // fit cover
+      const ar = img.width / img.height;
+      const cw = charCanvas.width, ch = charCanvas.height;
+      let dw=cw, dh=cw/ar;
+      if(dh < ch){ dh = ch; dw = ch*ar; }
+      const dx = (cw-dw)/2, dy=(ch-dh)/2;
+      charCtx.drawImage(img, dx, dy, dw, dh);
+      showStatus('Character ready');
+    };
+    img.onerror = ()=> { startCharImg=null; charReady=false; showStatus('Character failed'); };
+    img.src = r.result;
+  };
+  r.readAsDataURL(f);
+});
+
+clearUploads.addEventListener('click', ()=>{
+  logoImg = null; logoReady=false;
+  startCharImg = null; charReady=false;
+  logoFile.value=''; charFile.value='';
+  // restore placeholder
+  drawCharPlaceholder();
+  showStatus('Uploads cleared');
+});
+
+// Level selection
+easyBtn.addEventListener('click', ()=>{ level='easy'; curParams = params.easy; easyBtn.classList.add('level-selected'); hardBtn.classList.remove('level-selected'); levelText.textContent='Level: Easy'; });
+hardBtn.addEventListener('click', ()=>{ level='hard'; curParams = params.hard; hardBtn.classList.add('level-selected'); easyBtn.classList.remove('level-selected'); levelText.textContent='Level: Hard'; });
+
+// Start
+startBtn.addEventListener('click', ()=>{
+  if(!level){ alert('Please choose a level (Easy or Hard) before starting.'); return; }
+  startGame();
+});
+
+// Game parameters (Easy made easier)
 const params = {
-  // Easy now has noticeably larger gap and slower objects for 'members' (more space)
-  easy: { gap: 260, speed: 120, spawnInterval: 1900 },
-  hard: { gap: 120, speed: 300, spawnInterval: 900 }
+  easy: { gap: 320, speed: 90, spawnInterval: 2200 },   // very generous gap and slow speed
+  hard: { gap: 120, speed: 320, spawnInterval: 900 }
 };
 let curParams = params.easy;
 
-// Bee (improved visuals)
-const bee = { x:160, y:H/2, vy:0, radius:22, gravity:0.95, jump:-16, wingPhase:0 };
+// Bee (bigger and detailed)
+const bee = {
+  x: 170, y: H/2, vy:0, radius:26, gravity:0.95, jump:-16,
+  wingPhase:0
+};
 
-// Pixel fallback (8x8 ring)
+// Pixel fallback for obstacles if no logo
 const pixelRing = [
   [0,1,1,1,1,1,1,0],
   [1,0,0,0,0,0,0,1],
@@ -127,76 +212,37 @@ const pixelRing = [
   [0,1,1,1,1,1,1,0]
 ];
 
-// --- Logo image handling
-let logoImg = null;
-let logoReady = false;
-logoInput.addEventListener('change', (e) => {
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ()=> {
-    const img = new Image();
-    img.onload = ()=> { logoImg = img; logoReady = true; statusText('Logo loaded'); };
-    img.onerror = ()=> { logoImg = null; logoReady = false; statusText('Failed to load logo'); };
-    img.src = reader.result;
-  };
-  reader.readAsDataURL(f);
-});
-clearLogoBtn.addEventListener('click', ()=>{ logoImg = null; logoReady = false; logoInput.value = ''; statusText('Logo cleared'); });
-
-// --- Controls
+// Controls: jump on click/touch/space
 function jump(){ if(!started) return; if(gameOver) return; bee.vy = bee.jump; audioJump(); }
 canvas.addEventListener('mousedown', jump);
 canvas.addEventListener('touchstart', (e)=>{ e.preventDefault(); jump(); }, {passive:false});
-window.addEventListener('keydown', (e)=>{ if(e.code==='Space') jump(); });
+window.addEventListener('keydown', (e)=>{ if(e.code === 'Space') jump(); });
 
-// --- Menu
-easyBtn.onclick = ()=>{ level='easy'; curParams = params.easy; easyBtn.style.background='#ffeaa7'; hardBtn.style.background='#fff'; levelText.textContent='Level: Easy'; };
-hardBtn.onclick = ()=>{ level='hard'; curParams = params.hard; hardBtn.style.background='#ffeaa7'; easyBtn.style.background='#fff'; levelText.textContent='Level: Hard'; };
-startBtn.onclick = ()=>{ if(!level){ alert('Please choose Easy or Hard first.'); return; } startGame(); };
-
-function startGame(){
-  started = true; overlay.style.display = 'none';
-  timeLeft = 45; lastTime = performance.now(); obstacles = []; spawnTimer = 0; score = 0; gameOver = false; win = false;
-  bee.y = H/2; bee.vy = 0;
-  scoreText.textContent = 'Score: 0';
-  requestAnimationFrame(loop);
-}
-
-// --- Obstacles (tile with uploaded logo if present; else use pixel ring)
+// spawn obstacle
 function spawnObstacle(){
   const gap = curParams.gap;
-  const minY = 60; const maxY = H - 60 - gap;
+  const minY = 60, maxY = H - 60 - gap;
   const gapY = Math.floor(Math.random()*(maxY-minY+1))+minY;
-  // tileSize chosen to match logo or fallback pixel ring
-  const tileSize = logoReady ? Math.max(28, Math.min(64, Math.floor(logoImg.width/2))) : 28;
-  obstacles.push({ x: W + 120, gapY, gap, tileSize, passed:false });
+  // tile size: if logo uploaded, adapt tile in proportion to logo and viewport; else fallback to 28
+  const tileSize = logoReady ? Math.max(28, Math.min(64, Math.round((logoImg.height + logoImg.width)/32))) : 28;
+  obstacles.push({ x: W + 140, gapY, gap, tileSize, passed:false });
 }
 
-function checkCollision(obs){
-  const totalWidth = logoReady ? (Math.round(obs.tileSize * (logoImg.width / obs.tileSize))) || (8*obs.tileSize) : 8*obs.tileSize;
-  const left = obs.x - totalWidth/2;
-  const right = obs.x + totalWidth/2;
-  if(bee.x + bee.radius < left || bee.x - bee.radius > right) return false;
-  if((bee.y - bee.radius) < obs.gapY || (bee.y + bee.radius) > (obs.gapY + obs.gap)) return true;
+// collision check (forgiving: use smaller hit radius)
+function checkCollision(ob){
+  const totalWidth = 8 * ob.tileSize;
+  const left = ob.x - totalWidth/2;
+  const right = ob.x + totalWidth/2;
+  const hitRadius = bee.radius * 0.78; // forgiving smaller hitbox
+  if(bee.x + hitRadius < left || bee.x - hitRadius > right) return false;
+  if( (bee.y - hitRadius) < ob.gapY || (bee.y + hitRadius) > (ob.gapY + ob.gap) ) return true;
   return false;
 }
 
-// draw obstacles: if logo uploaded, tile scaled logo; else draw pixel rings
-function drawTileLogoAt(x,y,tileSize){
-  if(!logoReady) return;
-  // draw logo scaled to tileSize x tileSize. We'll tile an 8x? block grid horizontally (match fallback width = 8 tiles)
-  for(let r=0;r< Math.ceil(logoImg.height / tileSize) ; r++){
-    for(let c=0;c<8; c++){
-      ctx.drawImage(logoImg, Math.round(x + c*tileSize), Math.round(y + r*tileSize), Math.ceil(tileSize), Math.ceil(tileSize));
-    }
-  }
-}
-
+// draw obstacles
 function drawPixelRingAt(x,y,tileSize){
-  const rows = pixelRing.length, cols = pixelRing[0].length;
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
+  for(let r=0;r<pixelRing.length;r++){
+    for(let c=0;c<pixelRing[r].length;c++){
       if(pixelRing[r][c]){
         ctx.fillStyle = '#f7cfcf';
         ctx.fillRect(Math.round(x + c*tileSize), Math.round(y + r*tileSize), Math.ceil(tileSize), Math.ceil(tileSize));
@@ -205,85 +251,179 @@ function drawPixelRingAt(x,y,tileSize){
   }
 }
 
-function drawObstacle(obs){
-  const tile = obs.tileSize;
-  const totalWidth = logoReady ? 8*tile : 8*tile;
-  const left = obs.x - totalWidth/2;
+function drawLogoTileAt(x,y,tileSize,ob){
+  // tile the uploaded logo to cover 8 columns wide and as many rows as needed
+  // scale logo to tileSize square
+  const cols = 8;
+  // If logo is small, repeat; if large, scale down
+  for(let r = 0; r < Math.ceil( (logoImg.height/ tileSize) + 2 ); r++){
+    for(let c=0;c<cols;c++){
+      ctx.drawImage(logoImg, Math.round(x + c*tileSize), Math.round(y + r*tileSize), Math.ceil(tileSize), Math.ceil(tileSize));
+    }
+  }
+}
+
+function drawObstacle(ob){
+  const tile = ob.tileSize;
+  const totalWidth = 8*tile;
+  const left = ob.x - totalWidth/2;
   // top
-  for(let y = - (8*tile); y < obs.gapY; y += 8*tile){
-    if(logoReady) drawTileLogoAt(left, y, tile);
+  for(let y = - (8*tile); y < ob.gapY; y += 8*tile){
+    if(logoReady) drawLogoTileAt(left, y, tile, ob);
     else drawPixelRingAt(left, y, tile);
   }
   // bottom
-  for(let y = obs.gapY + obs.gap; y < H + 8*tile; y += 8*tile){
-    if(logoReady) drawTileLogoAt(left, y, tile);
+  for(let y = ob.gapY + ob.gap; y < H + 8*tile; y += 8*tile){
+    if(logoReady) drawLogoTileAt(left, y, tile, ob);
     else drawPixelRingAt(left, y, tile);
   }
 }
 
-// --- Audio (simple beeps)
+/* ------------- Visuals: nature background -------------- */
+let cloudPositions = [];
+function initClouds(){
+  cloudPositions = [];
+  const count = 6;
+  for(let i=0;i<count;i++){
+    cloudPositions.push({ x: Math.random()*W, y: 40 + Math.random()*80, speed: 0.2 + Math.random()*0.4, size: 80 + Math.random()*120 });
+  }
+}
+initClouds();
+
+/* ------------- Audio (small beeps) -------------- */
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 const audioCtx = AudioCtx ? new AudioCtx() : null;
-function playBeep(freq, time, type='sine', gain=0.12){
+function playBeep(freq, dur, type='sine', g=0.08){
   if(!audioCtx) return;
   const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = type; o.frequency.value = freq; g.gain.value = gain;
-  o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + time);
+  const gg = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq; gg.gain.value = g;
+  o.connect(gg); gg.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + dur);
 }
 function audioJump(){ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); playBeep(880,0.08,'sine',0.06); }
-function audioHit(){ playBeep(160,0.22,'sawtooth',0.18); }
-function audioWin(){ playBeep(1400,0.08,'sine',0.08); setTimeout(()=>playBeep(1000,0.08,'sine',0.06),110); }
+function audioHit(){ playBeep(160,0.22,'sawtooth',0.16); }
+function audioWin(){ playBeep(1400,0.08,'sine',0.08); setTimeout(()=>playBeep(1000,0.08,'sine',0.06),120); }
 
-// --- Main loop
+/* ------------- Main loop -------------- */
+function startGame(){
+  started=true; menuOverlay.style.display='none'; timeLeft=45; lastTime=performance.now();
+  score = 0; scoreText.textContent = 'Score: 0';
+  obstacles = []; spawnTimer=0; gameOver=false; win=false;
+  bee.y = H/2; bee.vy = 0;
+  initClouds();
+  requestAnimationFrame(loop);
+}
+
 function loop(ts){
   if(!lastTime) lastTime = ts;
   const dt = Math.min(40, ts - lastTime);
   lastTime = ts;
   if(!started) return;
-  if(gameOver){ draw(); displayEnd(); return; }
+  if(gameOver){ draw(); showEndDialog(); return; }
 
-  // timer
+  // time update
   timeLeft -= dt/1000;
-  if(timeLeft <= 0){ timeLeft = 0; win = true; gameOver = true; audioWin(); }
+  if(timeLeft <= 0){ timeLeft = 0; win=true; gameOver=true; audioWin(); }
 
   // spawn
   spawnTimer += dt;
   if(spawnTimer > curParams.spawnInterval){ spawnTimer = 0; spawnObstacle(); }
 
-  // move objs
+  // move obstacles
   for(let i=obstacles.length-1;i>=0;i--){
     const ob = obstacles[i];
     ob.x -= curParams.speed * (dt/1000);
     if(!ob.passed && ob.x + 8*ob.tileSize/2 < bee.x){ ob.passed = true; score++; scoreText.textContent = 'Score: ' + score; playBeep(620,0.06,'square',0.06); }
-    if(ob.x < -400) obstacles.splice(i,1);
+    if(ob.x < -600) obstacles.splice(i,1);
   }
 
-  // physics
+  // physics (bee)
   bee.vy += bee.gravity;
   bee.y += bee.vy;
-  bee.wingPhase += dt*0.025;
+  bee.wingPhase += dt*0.02;
 
-  if(bee.y + bee.radius > H){ bee.y = H - bee.radius; bee.vy = 0; gameOver = true; audioHit(); }
-  if(bee.y - bee.radius < 0){ bee.y = bee.radius; bee.vy = 0; }
+  // floor/ceiling
+  if(bee.y + bee.radius > H - 12){ bee.y = H - 12 - bee.radius; bee.vy = 0; gameOver=true; audioHit(); }
+  if(bee.y - bee.radius < 12){ bee.y = 12 + bee.radius; bee.vy = 0; }
 
   // collisions
-  for(const ob of obstacles){ if(checkCollision(ob)){ gameOver = true; audioHit(); break; } }
+  for(const ob of obstacles){
+    if(checkCollision(ob)){ gameOver = true; audioHit(); break; }
+  }
 
   draw();
   if(!gameOver) requestAnimationFrame(loop);
 }
 
-// --- Draw everything
-function draw(){
-  ctx.clearRect(0,0,W,H);
-  // background subtle gradient
+/* ------------- Drawing  -------------- */
+function drawBackground(dt){
+  // sky gradient
   const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#071018'); g.addColorStop(1,'#04121a');
+  g.addColorStop(0, '#a7d7ff'); // morning sky
+  g.addColorStop(0.45, '#8fd9ff');
+  g.addColorStop(1, '#6fb3d7');
   ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 
-  // decorative finish line
-  ctx.fillStyle = '#19d06b'; ctx.fillRect(W-14,0,8,H);
+  // sun
+  const sunX = W - 120, sunY = 100;
+  const sG = ctx.createRadialGradient(sunX,sunY,10,sunX,sunY,80);
+  sG.addColorStop(0,'#fff6c2'); sG.addColorStop(1,'rgba(255,244,200,0)');
+  ctx.fillStyle = sG; ctx.beginPath(); ctx.arc(sunX,sunY,80,0,Math.PI*2); ctx.fill();
+
+  // hills (parallax)
+  drawHill(0.18, '#2e8b57', 40, 120);
+  drawHill(0.33, '#2aa05a', 60, 150);
+  drawHill(0.5, '#1e8a43', 80, 220);
+
+  // moving clouds
+  for(let c of cloudPositions){
+    c.x += c.speed;
+    if(c.x - c.size > W) c.x = -c.size - 40;
+    drawCloud(c.x, c.y, c.size);
+  }
+
+  // foreground grass
+  ctx.fillStyle = '#0f6b3a';
+  ctx.fillRect(0, H - 40, W, 40);
+  // blades
+  ctx.fillStyle = '#0f8a4a';
+  for(let i=0;i<W;i+=18){
+    ctx.fillRect(i + 6, H - 46 - Math.abs(Math.sin(i/20))*6, 4, 16);
+  }
+}
+
+function drawCloud(x,y,size){
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.beginPath();
+  ctx.ellipse(x, y, size*0.6, size*0.36, 0, 0, Math.PI*2);
+  ctx.ellipse(x + size*0.45, y + 6, size*0.5, size*0.34, 0, 0, Math.PI*2);
+  ctx.ellipse(x - size*0.45, y + 4, size*0.48, size*0.32, 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawHill(offsetFactor, color, height, tension){
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  const steps = 6;
+  for(let i=0;i<=steps;i++){
+    const px = (i/steps)*W;
+    const py = H - height - Math.sin((i + offsetFactor*10) * 0.9 + Date.now()*0.0006) * (tension*0.2);
+    ctx.quadraticCurveTo(px - W/steps * 0.35, py + 10, px, py);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function draw(){
+  // background
+  drawBackground();
+
+  // finish line visual (far right - decorative)
+  ctx.fillStyle = '#ffefc5';
+  ctx.fillRect(W - 12, 0, 8, H);
 
   // obstacles
   for(const ob of obstacles) drawObstacle(ob);
@@ -291,73 +431,69 @@ function draw(){
   // bee
   drawBee();
 
-  // UI
-  timeText.textContent = 'Time: ' + Math.ceil(timeLeft);
+  // HUD overlay texts on canvas edges (mirrors DOM)
+  // (we use DOM HUD so this area can be empty)
 }
 
-// --- Improved bee drawing: body, stripes, antennae, stinger, wing shading
+/* Bee drawing: improved visuals (antennae, stripes, eye, wings) */
 function drawBee(){
-  ctx.save(); ctx.translate(Math.round(bee.x), Math.round(bee.y));
+  ctx.save();
+  const x = Math.round(bee.x), y = Math.round(bee.y);
+  ctx.translate(x,y);
 
-  // subtle shadow
-  ctx.beginPath(); ctx.ellipse(2, bee.radius*0.8 + 6, bee.radius*1.05, bee.radius*0.5, 0, 0, Math.PI*2);
+  // subtle drop shadow
+  ctx.beginPath(); ctx.ellipse(4, bee.radius*0.9 + 8, bee.radius*1.1, bee.radius*0.45, 0, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fill();
 
-  // body (oval)
+  // body
   ctx.beginPath();
-  ctx.ellipse(0,0,bee.radius*1.1,bee.radius*0.85,0,0,Math.PI*2);
+  ctx.ellipse(0, 0, bee.radius*1.15, bee.radius*0.9, 0, 0, Math.PI*2);
   ctx.fillStyle = '#ffd54a'; ctx.fill();
 
-  // black stripes (rounded)
+  // black rounded stripes
   ctx.fillStyle = '#222';
-  roundRect(ctx, -12, -12, 24, 10, 6, true, false);
-  roundRect(ctx, -12, 0, 24, 10, 6, true, false);
-  roundRect(ctx, -12, 12, 24, 10, 6, true, false);
+  roundRect(ctx, -14, -14, 28, 10, 8, true, false);
+  roundRect(ctx, -14, -2, 28, 10, 8, true, false);
+  roundRect(ctx, -14, 10, 28, 10, 8, true, false);
 
-  // face (slightly forward)
-  ctx.beginPath(); ctx.arc(8, -2, 7, 0, Math.PI*2); ctx.fillStyle='#f7e3b3'; ctx.fill();
+  // face area
+  ctx.beginPath(); ctx.arc(9, -2, 8, 0, Math.PI*2); ctx.fillStyle = '#f6e3b8'; ctx.fill();
 
   // eye
-  ctx.beginPath(); ctx.arc(10,-3,2.2,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+  ctx.beginPath(); ctx.arc(11, -3, 2.6, 0, Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
 
   // antennae
-  ctx.strokeStyle = '#111'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(2,-12); ctx.quadraticCurveTo(6,-26,12,-30); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(6,-12); ctx.quadraticCurveTo(14,-26,18,-28); ctx.stroke();
+  ctx.strokeStyle = '#221'; ctx.lineWidth = 2.2; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(3, -14); ctx.quadraticCurveTo(6,-28,12,-32); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(7, -14); ctx.quadraticCurveTo(16,-30,20,-28); ctx.stroke();
 
-  // wings (two, semi-transparent, flap using wingPhase)
+  // wings (two) - flapping via wingPhase
   const phase = Math.sin(bee.wingPhase);
   ctx.save();
-  ctx.globalAlpha = 0.95;
+  ctx.globalAlpha = 0.96;
   ctx.fillStyle = 'rgba(255,255,255,0.95)';
-  // left wing
   ctx.translate(-4,-6);
-  ctx.rotate(-0.6 + 0.14*phase);
-  ctx.beginPath(); ctx.ellipse(-6,-18,18,12,0,0,Math.PI*2); ctx.fill();
+  ctx.rotate(-0.55 + 0.14*phase);
+  ctx.beginPath(); ctx.ellipse(-8, -18, 20, 12, 0, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  // right wing
+  ctx.globalAlpha = 0.86;
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
   ctx.translate(6,-6);
-  ctx.rotate(0.4 - 0.12*phase);
-  ctx.beginPath(); ctx.ellipse(10,-18,18,12,0,0,Math.PI*2); ctx.fill();
+  ctx.rotate(0.45 - 0.12*phase);
+  ctx.beginPath(); ctx.ellipse(12, -18, 20, 12, 0, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
   // stinger
   ctx.beginPath(); ctx.fillStyle = '#241f1f';
-  ctx.moveTo(-bee.radius*1.05, 6);
-  ctx.lineTo(-bee.radius*1.65, 8);
-  ctx.lineTo(-bee.radius*1.05, 12);
-  ctx.closePath(); ctx.fill();
+  ctx.moveTo(-bee.radius*1.05, 6); ctx.lineTo(-bee.radius*1.7, 9); ctx.lineTo(-bee.radius*1.05, 14); ctx.closePath(); ctx.fill();
 
   ctx.restore();
 }
 
-// helper to draw rounded rect
+// helper: rounded rect
 function roundRect(ctx,x,y,w,h,r,fill,stroke){
-  if(typeof r==='undefined') r=5;
   ctx.beginPath();
   ctx.moveTo(x+r,y);
   ctx.arcTo(x+w,y,x+w,y+h,r);
@@ -369,33 +505,170 @@ function roundRect(ctx,x,y,w,h,r,fill,stroke){
   if(stroke) ctx.stroke();
 }
 
-// --- End display
-function displayEnd(){
-  ctx.fillStyle = 'rgba(2,2,2,0.65)'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = '32px system-ui';
-  if(win) ctx.fillText('You survived 45s — You win! 🎉', W/2, H/2 - 8);
-  else ctx.fillText('Game Over — You hit an obstacle', W/2, H/2 - 8);
-  ctx.font = '16px system-ui'; ctx.fillText('Tap to return to menu', W/2, H/2 + 28);
+/* ------------- End-of-game dialog & retry -------------- */
+function showEndDialog(){
+  // show a modal-like overlay (simple)
+  // draw persistent overlay on canvas
+  ctx.fillStyle = 'rgba(2,2,2,0.6)'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#fff'; ctx.textAlign='center';
+  ctx.font = '28px system-ui';
+  if(win) ctx.fillText('You survived 45s — You win! 🎉', W/2, H/2 - 6);
+  else ctx.fillText('Game Over — You hit an obstacle', W/2, H/2 - 6);
+
+  ctx.font = '18px system-ui';
+  ctx.fillText('Score: ' + score, W/2, H/2 + 20);
+
+  // draw buttons (Retry / Menu) using DOM overlay to avoid focus issues
+  if(!document.getElementById('endControls')){
+    const wrapper = document.createElement('div');
+    wrapper.id = 'endControls';
+    wrapper.style.position = 'absolute'; wrapper.style.left='0'; wrapper.style.top='0'; wrapper.style.width='100%'; wrapper.style.height='100%';
+    wrapper.style.display = 'flex'; wrapper.style.alignItems='center'; wrapper.style.justifyContent='center';
+    wrapper.style.pointerEvents = 'auto';
+    const box = document.createElement('div');
+    box.style.background='rgba(0,0,0,0.6)'; box.style.padding='18px'; box.style.borderRadius='12px'; box.style.display='flex'; box.style.flexDirection='column'; box.style.alignItems='center'; box.style.gap='12px';
+    const rBtn = document.createElement('button'); rBtn.textContent='Retry'; rBtn.className='btn'; rBtn.onclick = ()=>{ document.body.removeChild(wrapper); retry(); };
+    const mBtn = document.createElement('button'); mBtn.textContent='Return to Menu'; mBtn.className='btn'; mBtn.style.background='#fff'; mBtn.style.color='#000'; mBtn.onclick = ()=>{ document.body.removeChild(wrapper); returnToMenu(); };
+    box.appendChild(rBtn); box.appendChild(mBtn);
+    wrapper.appendChild(box);
+    document.body.appendChild(wrapper);
+  }
 }
 
-// --- Small UI helpers & restart
-function statusText(s){ const st = document.getElementById('status'); if(st){ st.textContent = s; setTimeout(()=>{ if(st.textContent===s) st.textContent=''; }, 2800); } }
+function retry(){
+  // restart with same level and same uploads
+  gameOver=false; win=false;
+  timeLeft = 45; lastTime = performance.now();
+  obstacles=[]; spawnTimer=0; score=0; scoreText.textContent='Score: 0';
+  bee.y = H/2; bee.vy = 0;
+  requestAnimationFrame(loop);
+}
 
-canvas.addEventListener('mousedown', ()=>{ if(gameOver){ overlay.style.display = 'flex'; started = false; }});
-canvas.addEventListener('touchstart', (e)=>{ if(gameOver){ overlay.style.display = 'flex'; started = false; } }, {passive:false});
+function returnToMenu(){
+  started=false; gameOver=false; win=false;
+  menuOverlay.style.display = 'flex';
+}
 
-// --- Responsive
-function resize(){ const maxW = Math.min(window.innerWidth - 30, 1200); const scale = Math.min(maxW / W, (window.innerHeight - 60) / H); canvas.style.width = Math.round(W*scale)+'px'; canvas.style.height = Math.round(H*scale)+'px'; }
+// small on-screen status helper (not intrusive)
+function showStatus(txt){
+  // small ephemeral text at top-right
+  const el = document.createElement('div');
+  el.textContent = txt;
+  el.style.position='absolute'; el.style.right='26px'; el.style.top='26px';
+  el.style.background='rgba(0,0,0,0.6)'; el.style.color='#fff'; el.style.padding='8px 10px'; el.style.borderRadius='8px'; el.style.zIndex='9999';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity 400ms'; el.style.opacity='0'; setTimeout(()=>el.remove(),420); }, 1800);
+}
+
+/* ------------- Resize and initial drawing -------------- */
+function resize(){ const maxW = Math.min(window.innerWidth - 40, 1100); const scale = Math.min(maxW / W, (window.innerHeight - 60) / H); canvas.style.width = Math.round(W*scale) + 'px'; canvas.style.height = Math.round(H*scale) + 'px'; }
 window.addEventListener('resize', resize); resize();
 
-// --- Initial placeholder
-(function initial(){
-  ctx.fillStyle = '#06121a'; ctx.fillRect(0,0,W,H);
-  ctx.fillStyle = '#fff'; ctx.font = '22px system-ui'; ctx.textAlign='center';
-  ctx.fillText('Honeybee Pixel Avoid — Updated', W/2, H/2 - 8);
-  ctx.font = '14px system-ui'; ctx.fillText('Choose level, upload logo (optional), then Start. Bee improved + Easy gives more space.', W/2, H/2 + 18);
+/* ------------- initial render loop to show start-screen visuals (character talks) -------------- */
+(function startScreenLoop(){
+  // draw background & start-char prompt
+  // draw background
+  drawBackground();
+  // draw bee idle on left
+  drawBee();
+
+  // draw start-card shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.fillRect(40, 60, 360, 160);
+
+  // show character & text: either uploaded char or placeholder
+  ctx.fillStyle = '#fff'; ctx.font='20px system-ui'; ctx.textAlign='left';
+  const msg = charReady ? 'I\'m here — press Start when ready!' : 'I\'m cheering — press Start when ready!';
+  ctx.fillText(msg, 60, 100);
+
+  // small tip
+  ctx.font='14px system-ui'; ctx.fillStyle='#eaeaea';
+  ctx.fillText('Tip: Upload your logo to match obstacles, or upload a character to show on the start screen.', 60, 130);
+
+  // loop the small animation if menu visible
+  if(menuOverlay.style.display !== 'none') requestAnimationFrame(startScreenLoop);
 })();
 
+/* ------------- Utility: drawBackground used earlier in startScreenLoop & game draw -------------- */
+function drawBackground(){
+  // sky
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, '#b6e6ff');
+  g.addColorStop(0.45, '#96ddff');
+  g.addColorStop(1, '#82c3d7');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  // sun
+  ctx.fillStyle = 'rgba(255,250,200,0.9)';
+  ctx.beginPath(); ctx.arc(W - 120, 110, 62, 0, Math.PI*2); ctx.fill();
+
+  // hills (static gentle curves)
+  ctx.fillStyle = '#2e8b57'; ctx.beginPath();
+  ctx.moveTo(0,H); ctx.quadraticCurveTo(W*0.25, H-180, W*0.5,H-120); ctx.quadraticCurveTo(W*0.75,H-60,W,H-140);
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = '#3aa76b'; ctx.beginPath();
+  ctx.moveTo(0,H); ctx.quadraticCurveTo(W*0.2,H-120,W*0.5,H-80); ctx.quadraticCurveTo(W*0.8,H-40,W,H-90);
+  ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+
+  // foreground grass
+  ctx.fillStyle = '#0f6b3a'; ctx.fillRect(0,H-42,W,42);
+}
+
+/* ------------- Start/stop helpers -------------- */
+function draw(){
+  // full redraw for game frames
+  drawBackground();
+  // moving clouds (simple animation)
+  for(let i=0;i<cloudPositions.length;i++){
+    const c = cloudPositions[i];
+    c.x += c.speed;
+    if(c.x > W + 200) c.x = -200;
+    drawCloud(c.x, c.y, c.size || 90);
+  }
+  // obstacles & bee
+  for(const ob of obstacles) drawObstacle(ob);
+  drawBee();
+
+  // update DOM HUD
+  timeText.textContent = 'Time: ' + Math.ceil(timeLeft);
+  scoreText.textContent = 'Score: ' + score;
+  levelText.textContent = 'Level: ' + (level ? (level.charAt(0).toUpperCase() + level.slice(1)) : '-');
+}
+
+// small cloud used in draw
+function drawCloud(x,y,size){
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.ellipse(x, y, size*0.6, size*0.33, 0, 0, Math.PI*2);
+  ctx.ellipse(x + size*0.45, y + 6, size*0.5, size*0.33, 0, 0, Math.PI*2);
+  ctx.ellipse(x - size*0.45, y + 4, size*0.48, size*0.30, 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+/* ------------- Game init -------------- */
+// preseed clouds positions used in draw
+const cloudPositions = [];
+(function initCloudPositions(){
+  for(let i=0;i<8;i++){
+    cloudPositions.push({ x: Math.random()*W, y: 40 + Math.random()*110, speed: 0.2 + Math.random()*0.5, size: 60 + Math.random()*140 });
+  }
+})();
+
+// initial values
+timeText.textContent = 'Time: 45';
+levelText.textContent = 'Level: -';
+scoreText.textContent = 'Score: 0';
+
+// expose a small status function to HUD
+function showStatusShort(t){
+  // update HUD status briefly via DOM element if wanted
+}
+
+// Ensure canvas resizes nicely
+resize();
+
+/* End of single-file game */
 </script>
 </body>
 </html>
